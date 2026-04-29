@@ -13,11 +13,11 @@ module Make (K : Hashmap_intf.KEY) = struct
   (** {Types} *)
 
   type 'v t = {
-    mutable buckets : (K.t * 'v) list array;
+    buckets : (K.t * 'v) list array Atomic.t;
     locks : Mutex.t array;
     num_stripes : int;
     size : int Atomic.t;
-    mutable capacity : int;              (* current number of buckets *)
+    capacity : int Atomic.t;              (* current number of buckets *)
     load_factor_threshold : float;
     resize_lock : Mutex.t;               (* serialises resize attempts *)
   }
@@ -29,7 +29,7 @@ module Make (K : Hashmap_intf.KEY) = struct
 
   let bucket_for_key t key =
     (* ensure non-negative: mask off sign bit of the hash *)
-    (K.hash key land max_int) mod t.capacity
+    (K.hash key land max_int) mod (Atomic.get t.capacity)
 
   (** { Creation} *)
 
@@ -38,11 +38,11 @@ module Make (K : Hashmap_intf.KEY) = struct
     if num_stripes <= 0 then invalid_arg "Striped_hashmap.create: num_stripes must be > 0";
     let effective_capacity = max capacity num_stripes in
     {
-      buckets = Array.make effective_capacity [];
+      buckets = Atomic.make (Array.make effective_capacity []);
       locks = Array.init num_stripes (fun _ -> Mutex.create ());
       num_stripes;
       size = Atomic.make 0;
-      capacity = effective_capacity;
+      capacity = Atomic.make effective_capacity;
       load_factor_threshold = load_factor;
       resize_lock = Mutex.create ();
     }
@@ -51,7 +51,7 @@ module Make (K : Hashmap_intf.KEY) = struct
 
   (** [should_resize t] returns [true] when the load factor is exceeded. *)
   let should_resize t =
-    let load = float_of_int (Atomic.get t.size) /. float_of_int t.capacity in
+    let load = float_of_int (Atomic.get t.size) /. float_of_int (Atomic.get t.capacity) in
     load > t.load_factor_threshold
 
   (** [resize t] doubles the bucket array.  Must be called WITHOUT holding any
@@ -72,18 +72,19 @@ module Make (K : Hashmap_intf.KEY) = struct
             Mutex.unlock t.locks.(i)
           done)
         (fun () ->
-          let old_cap = t.capacity in
+          let old_cap = Atomic.get t.capacity in
           let new_cap = old_cap * 2 in
           let new_buckets = Array.make new_cap [] in
+          let old_buckets = Atomic.get t.buckets in
           (* rehash every entry *)
           Array.iter (fun chain ->
             List.iter (fun ((k, _v) as entry) ->
               let idx = (K.hash k land max_int) mod new_cap in
               new_buckets.(idx) <- entry :: new_buckets.(idx))
             chain)
-          t.buckets;
-          t.buckets <- new_buckets;
-          t.capacity <- new_cap)
+          old_buckets;
+          Atomic.set t.buckets new_buckets;
+          Atomic.set t.capacity new_cap)
       end)
 
   (** {Operations}
@@ -105,16 +106,17 @@ module Make (K : Hashmap_intf.KEY) = struct
         Mutex.unlock t.locks.(si);
         attempt ()
       end else
+        let buckets = Atomic.get t.buckets in
         Fun.protect ~finally:(fun () -> Mutex.unlock t.locks.(si)) (fun () ->
-          let bucket = t.buckets.(bi) in
+          let bucket = buckets.(bi) in
           let rec replace = function
             | [] ->
               (* key not found — prepend *)
-              t.buckets.(bi) <- (key, value) :: bucket;
+              buckets.(bi) <- (key, value) :: bucket;
               Atomic.incr t.size
             | (k, _v) :: _rest when K.equal k key ->
               (* key exists — update in place by rebuilding the chain *)
-              t.buckets.(bi) <-
+              buckets.(bi) <-
                 List.map (fun (k', v') -> if K.equal k' key then (k', value) else (k', v')) bucket
             | _ :: rest -> replace rest
           in
@@ -134,13 +136,14 @@ module Make (K : Hashmap_intf.KEY) = struct
         Mutex.unlock t.locks.(si);
         attempt ()
       end else
+        let buckets = Atomic.get t.buckets in
         Fun.protect ~finally:(fun () -> Mutex.unlock t.locks.(si)) (fun () ->
           let rec assoc_opt = function
             | [] -> None
             | (k, v) :: _ when K.equal k key -> Some v
             | _ :: rest -> assoc_opt rest
           in
-          assoc_opt t.buckets.(bi))
+          assoc_opt buckets.(bi))
     in
     attempt ()
 
@@ -154,11 +157,12 @@ module Make (K : Hashmap_intf.KEY) = struct
         Mutex.unlock t.locks.(si);
         attempt ()
       end else
+        let buckets = Atomic.get t.buckets in
         Fun.protect ~finally:(fun () -> Mutex.unlock t.locks.(si)) (fun () ->
-          let bucket = t.buckets.(bi) in
+          let bucket = buckets.(bi) in
           let found = List.exists (fun (k, _) -> K.equal k key) bucket in
           if found then begin
-            t.buckets.(bi) <- List.filter (fun (k, _) -> not (K.equal k key)) bucket;
+            buckets.(bi) <- List.filter (fun (k, _) -> not (K.equal k key)) bucket;
             Atomic.decr t.size
           end;
           found)
@@ -167,7 +171,7 @@ module Make (K : Hashmap_intf.KEY) = struct
 
   let size t = Atomic.get t.size
 
-  let capacity t = t.capacity
+  let capacity t = Atomic.get t.capacity
 
 end
 
