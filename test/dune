@@ -1,0 +1,25 @@
+(executable
+ (name test_striped)
+ (libraries concurrent_hashmap unix))
+
+(executable
+ (name test_split_ordered)
+ (libraries concurrent_hashmap unix))
+
+
+
+(executable
+ (name qcheck_lin_striped)
+ (libraries concurrent_hashmap qcheck-lin.domain))
+
+(executable
+ (name qcheck_lin_split_ordered)
+ (libraries concurrent_hashmap qcheck-lin.domain))
+
+(executable
+ (name qcheck_stm_striped)
+ (libraries concurrent_hashmap qcheck-stm.stm qcheck-stm.sequential qcheck-stm.domain qcheck-core.runner))
+
+(executable
+ (name qcheck_stm_split_ordered)
+ (libraries concurrent_hashmap qcheck-stm.stm qcheck-stm.sequential qcheck-stm.domain qcheck-core.runner))

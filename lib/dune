@@ -1,0 +1,4 @@
+(library
+ (name concurrent_hashmap)
+ (wrapped false)
+ (libraries unix))
