@@ -68,8 +68,10 @@ type 'v node = {
 }
 
 (** Dummy sentinel key — used for sentinel nodes and the tail.
-    Sentinels are distinguished by their so_key (LSB=0) and are never
-    compared against regular nodes via K.equal/K.compare. *)
+    Sentinels are distinguished by their so_key (LSB=0).  The
+    [node_less_than] and [node_equal_key] functions guard against
+    calling K.compare on sentinel keys — they only invoke K.compare
+    when both so_keys are regular (LSB=1). *)
 let sentinel_dummy_key : K.t = Obj.magic 0
 
 (** Dummy terminal node — acts as list tail. *)
@@ -112,15 +114,24 @@ type 'v t = {
     [so_key], so they occupy a different sort-key space from regular
     nodes (LSB=1) and don't interfere. *)
 
+(** [is_regular_key so_key] returns [true] if [so_key] belongs to a
+    regular (non-sentinel) node, i.e. its LSB is 1. *)
+let is_regular so_key = so_key land 1 = 1
+
 (** [node_less_than so rk curr] returns [true] if [curr] is ordered
-    strictly before [(so, rk)] in the composite key order. *)
+    strictly before [(so, rk)] in the composite key order.
+    K.compare is only invoked when both nodes are regular (LSB=1),
+    so sentinel_dummy_key is never passed to K.compare. *)
 let node_less_than so rk curr =
-  curr.so_key < so || (curr.so_key = so && K.compare curr.real_key rk < 0)
+  if curr.so_key <> so then curr.so_key < so
+  else if is_regular so then K.compare curr.real_key rk < 0
+  else false  (* two sentinels with same so_key — equal, not less *)
 
 (** [node_equal_key so rk curr] returns [true] if [curr] has the same
-    composite key [(so, rk)]. *)
+    composite key [(so, rk)].
+    K.compare is only invoked when both nodes are regular. *)
 let node_equal_key so rk curr =
-  curr.so_key = so && K.compare curr.real_key rk = 0
+  curr.so_key = so && (not (is_regular so) || K.compare curr.real_key rk = 0)
 
 (** [locate head so_key real_key] finds the window [(pred, curr)] such
     that [pred] is strictly before [(so_key, real_key)] and [curr] is

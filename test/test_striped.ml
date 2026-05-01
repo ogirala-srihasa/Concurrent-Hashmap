@@ -181,6 +181,77 @@ let test_negative_keys () =
   check (S.find t 5 = Some 50) "find(5) still intact after removing -5";
   printf "\n%!"
 
+(** {Test 8 — String keys} *)
+module StringKey = struct
+  type t = string
+  let hash    = Hashtbl.hash
+  let equal   = String.equal
+  let compare = String.compare
+end
+module SS = Striped_hashmap.Make(StringKey)
+
+let test_string_keys () =
+  printf "=== Test 8: String keys ===\n%!";
+  let t = SS.create () in
+  SS.insert t "hello" 1;
+  SS.insert t "world" 2;
+  SS.insert t "foo" 3;
+  check (SS.size t = 3) "size = 3 after 3 string inserts";
+  check (SS.find t "hello" = Some 1) "find \"hello\" = 1";
+  check (SS.find t "world" = Some 2) "find \"world\" = 2";
+  check (SS.find t "foo" = Some 3) "find \"foo\" = 3";
+  check (SS.find t "bar" = None) "find \"bar\" = None";
+  (* update *)
+  SS.insert t "hello" 99;
+  check (SS.find t "hello" = Some 99) "update: find \"hello\" = 99";
+  check (SS.size t = 3) "size unchanged after update";
+  (* remove *)
+  check (SS.remove t "world" = true) "remove \"world\" returns true";
+  check (SS.find t "world" = None) "find \"world\" = None after remove";
+  check (SS.remove t "world" = false) "remove \"world\" again returns false";
+  check (SS.size t = 2) "size = 2 after remove";
+  (* empty string key *)
+  SS.insert t "" 42;
+  check (SS.find t "" = Some 42) "find \"\" = 42 (empty string key)";
+  check (SS.size t = 3) "size = 3 after inserting empty string key";
+  printf "\n%!"
+
+(** {Test 9 — Float keys} *)
+module FloatKey = struct
+  type t = float
+  let hash    = Hashtbl.hash
+  let equal   = Float.equal
+  let compare = Float.compare
+end
+module SF = Striped_hashmap.Make(FloatKey)
+
+let test_float_keys () =
+  printf "=== Test 9: Float keys ===\n%!";
+  let t = SF.create () in
+  SF.insert t 1.0 "one";
+  SF.insert t 2.5 "two-point-five";
+  SF.insert t (-3.14) "neg-pi";
+  check (SF.size t = 3) "size = 3 after 3 float inserts";
+  check (SF.find t 1.0 = Some "one") "find 1.0 = \"one\"";
+  check (SF.find t 2.5 = Some "two-point-five") "find 2.5 = \"two-point-five\"";
+  check (SF.find t (-3.14) = Some "neg-pi") "find (-3.14) = \"neg-pi\"";
+  check (SF.find t 999.0 = None) "find 999.0 = None";
+  (* update *)
+  SF.insert t 1.0 "ONE";
+  check (SF.find t 1.0 = Some "ONE") "update: find 1.0 = \"ONE\"";
+  check (SF.size t = 3) "size unchanged after update";
+  (* remove *)
+  check (SF.remove t 2.5 = true) "remove 2.5 returns true";
+  check (SF.find t 2.5 = None) "find 2.5 = None after remove";
+  check (SF.size t = 2) "size = 2 after remove";
+  (* 0.0 vs -0.0 — Float.equal treats them as equal *)
+  let t2 = SF.create () in
+  SF.insert t2 0.0 "zero";
+  SF.insert t2 (-0.0) "neg-zero";
+  check (SF.find t2 0.0 = Some "neg-zero") "0.0 and -0.0 are equal (Float.equal)";
+  check (SF.size t2 = 1) "size = 1 (0.0 and -0.0 are the same key)";
+  printf "\n%!"
+
 (** {Main} *)
 let () =
   printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n%!";
@@ -193,4 +264,6 @@ let () =
   test_resize ();
   test_no_lost_items ();
   test_negative_keys ();
+  test_string_keys ();
+  test_float_keys ();
   printf "All striped hash map tests completed.\n%!"

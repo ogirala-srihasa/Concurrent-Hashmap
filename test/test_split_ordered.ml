@@ -163,6 +163,77 @@ let test_negative_keys () =
   check (SO.find t 5 = Some 50) "find(5) still intact after removing -5";
   printf "\n%!"
 
+(** {2 Test 8 — String keys} *)
+module StringKey = struct
+  type t = string
+  let hash    = Hashtbl.hash
+  let equal   = String.equal
+  let compare = String.compare
+end
+module SOS = Split_ordered_hashmap.Make(StringKey)
+
+let test_string_keys () =
+  printf "=== Test 8: String keys ===\n%!";
+  let t = SOS.create () in
+  SOS.insert t "hello" 1;
+  SOS.insert t "world" 2;
+  SOS.insert t "foo" 3;
+  check (SOS.size t = 3) "size = 3 after 3 string inserts";
+  check (SOS.find t "hello" = Some 1) "find \"hello\" = 1";
+  check (SOS.find t "world" = Some 2) "find \"world\" = 2";
+  check (SOS.find t "foo" = Some 3) "find \"foo\" = 3";
+  check (SOS.find t "bar" = None) "find \"bar\" = None";
+  (* update *)
+  SOS.insert t "hello" 99;
+  check (SOS.find t "hello" = Some 99) "update: find \"hello\" = 99";
+  check (SOS.size t = 3) "size unchanged after update";
+  (* remove *)
+  check (SOS.remove t "world" = true) "remove \"world\" returns true";
+  check (SOS.find t "world" = None) "find \"world\" = None after remove";
+  check (SOS.remove t "world" = false) "remove \"world\" again returns false";
+  check (SOS.size t = 2) "size = 2 after remove";
+  (* empty string key *)
+  SOS.insert t "" 42;
+  check (SOS.find t "" = Some 42) "find \"\" = 42 (empty string key)";
+  check (SOS.size t = 3) "size = 3 after inserting empty string key";
+  printf "\n%!"
+
+(** {2 Test 9 — Float keys} *)
+module FloatKey = struct
+  type t = float
+  let hash    = Hashtbl.hash
+  let equal   = Float.equal
+  let compare = Float.compare
+end
+module SOF = Split_ordered_hashmap.Make(FloatKey)
+
+let test_float_keys () =
+  printf "=== Test 9: Float keys ===\n%!";
+  let t = SOF.create () in
+  SOF.insert t 1.0 "one";
+  SOF.insert t 2.5 "two-point-five";
+  SOF.insert t (-3.14) "neg-pi";
+  check (SOF.size t = 3) "size = 3 after 3 float inserts";
+  check (SOF.find t 1.0 = Some "one") "find 1.0 = \"one\"";
+  check (SOF.find t 2.5 = Some "two-point-five") "find 2.5 = \"two-point-five\"";
+  check (SOF.find t (-3.14) = Some "neg-pi") "find (-3.14) = \"neg-pi\"";
+  check (SOF.find t 999.0 = None) "find 999.0 = None";
+  (* update *)
+  SOF.insert t 1.0 "ONE";
+  check (SOF.find t 1.0 = Some "ONE") "update: find 1.0 = \"ONE\"";
+  check (SOF.size t = 3) "size unchanged after update";
+  (* remove *)
+  check (SOF.remove t 2.5 = true) "remove 2.5 returns true";
+  check (SOF.find t 2.5 = None) "find 2.5 = None after remove";
+  check (SOF.size t = 2) "size = 2 after remove";
+  (* 0.0 vs -0.0 — Float.equal treats them as equal *)
+  let t2 = SOF.create () in
+  SOF.insert t2 0.0 "zero";
+  SOF.insert t2 (-0.0) "neg-zero";
+  check (SOF.find t2 0.0 = Some "neg-zero") "0.0 and -0.0 are equal (Float.equal)";
+  check (SOF.size t2 = 1) "size = 1 (0.0 and -0.0 are the same key)";
+  printf "\n%!"
+
 (** {2 Main} *)
 let () =
   printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n%!";
@@ -175,4 +246,6 @@ let () =
   test_resize ();
   test_concurrent_resize ();
   test_negative_keys ();
+  test_string_keys ();
+  test_float_keys ();
   printf "All split-ordered hash map tests completed.\n%!"

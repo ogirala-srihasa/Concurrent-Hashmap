@@ -6,7 +6,7 @@
     configurable threshold, all stripes are acquired in order, the bucket
     array is doubled, and every entry is rehashed.
 
-    Based on AoMPP Chapter 13 and Java's ConcurrentHashMap (pre-JDK-8). *)
+    Based on AoMPP Chapter 13  *)
 
 module Make (K : Hashmap_intf.KEY) = struct
 
