@@ -167,8 +167,10 @@ striped locking.
 
 \subsection{Implementation}
 
+The complete implementation can be found at the public \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/tree/main}{github repo}
+
 Both hash maps are realised as OCaml functors parameterised over a \texttt{KEY}
-module (defined in \texttt{hashmap\_intf.ml}), which must supply a type \texttt{t},
+module (defined in \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/lib/hashmap_intf.ml}{\texttt{hashmap\_intf.ml}}), which must supply a type \texttt{t},
 a \texttt{hash} function, an \texttt{equal} predicate, and a \texttt{compare}
 function. Both functors produce a module satisfying the \texttt{HASHMAP}
 signature, exposing \texttt{create}, \texttt{insert}, \texttt{find},
@@ -179,7 +181,7 @@ module alias change. For the lock free implementation we used the \texttt{Atomic
 
 
 % -----------------------------------------------------------------------------
-\subsubsection{Striped locking hash map (\texttt{striped\_hashmap.ml})}
+\subsubsection{Striped locking hash map (\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/lib/striped_hashmap.ml}{\texttt{striped\_hashmap.ml}})}
 % -----------------------------------------------------------------------------
 
 \paragraph{Data structure.}
@@ -251,7 +253,7 @@ releasing the locks. This is a stop-the-world event: no other thread may
 read or write the map during the resize window.
 
 % -----------------------------------------------------------------------------
-\subsubsection{Split-ordered list hash map (\texttt{split\_ordered\_hashmap.ml})}
+\subsubsection{Split-ordered list hash map (\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/lib/split_ordered_hashmap.ml}{\texttt{split\_ordered\_hashmap.ml}})}
 % -----------------------------------------------------------------------------
 
 \paragraph{Data structure.}
@@ -392,7 +394,7 @@ bugs during development.
 % -----------------------------------------------------------------------------
 \subsubsection{Manual unit tests}
 
-Both \texttt{test\_striped.ml} and \texttt{test\_split\_ordered.ml} have implementation of the following tests: sequential operations, error handling,
+Both \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/test_striped.ml}{\texttt{test\_striped.ml}} and \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/test_split_ordered.ml}{\texttt{test\_split\_ordered.ml}} have implementation of the following tests: sequential operations, error handling,
 concurrent inserts, concurrent mixed operations, resize correctness,
 no-lost-items (striped only), concurrent resize stress (split-ordered only),
 negative integer keys, string keys, and float keys.
@@ -401,7 +403,7 @@ negative integer keys, string keys, and float keys.
 \subsubsection{QCheck-STM}
 % -----------------------------------------------------------------------------
 
-\texttt{qcheck\_stm\_striped.ml} and \texttt{qcheck\_stm\_split\_ordered.ml}
+\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/qcheck_stm_striped.ml}{\texttt{qcheck\_stm\_striped.ml}} and \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/qcheck_stm_split_ordered.ml}{\texttt{qcheck\_stm\_split\_ordered.ml}}
 use QCheck-STM to test both implementations against a sequential reference
 model. The model is OCaml's \texttt{Hashtbl} with functional semantics: the
 state is an association list of \texttt{(key, value)} pairs, and each command
@@ -412,7 +414,7 @@ corresponding \texttt{next\_state} transformer and \texttt{postcond} check.
 \subsubsection{QCheck-Lin}
 % -----------------------------------------------------------------------------
 
-\texttt{qcheck\_lin\_striped.ml} and \texttt{qcheck\_lin\_split\_ordered.ml} each test generates 1\,000 random
+\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/qcheck_lin_striped.ml}{\texttt{qcheck\_lin\_striped.ml}} and \href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/qcheck_lin_split_ordered.ml}{\texttt{qcheck\_lin\_split\_ordered.ml}} each test generates 1\,000 random
 concurrent \texttt{insert}/\texttt{find}/\texttt{remove} sequences across two
 domains and checks that some valid sequential interleaving of the observed
 results exists, again using \texttt{Hashtbl} as the reference model.
@@ -433,8 +435,8 @@ limitation of the counter design.
 
 Both implementations were run under ThreadSanitizer using OCaml~5's dedicated
 \texttt{5.4.0+tsan} opam switch, which instruments the runtime for data-race
-detection. The manual concurrent tests (\texttt{test\_striped.ml},
-\texttt{test\_split\_ordered.ml}) were used as the TSAN workloads since they
+detection. The manual concurrent tests (\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/test_striped.ml}{\texttt{test\_striped.ml}},
+\href{https://github.com/ogirala-srihasa/Concurrent-Hashmap/blob/main/test/test_split_ordered.ml}{\texttt{test\_split\_ordered.ml}}) were used as the TSAN workloads since they
 exercise the highest level of concurrency.
 
 TSAN reported two distinct data races on the striped implementation and no
@@ -650,7 +652,7 @@ sustain 13--20\,Mops/s through 8 threads, peaking at 3 threads
 \subsection{Memory overhead}
 % ---------------------------------------------------------------------------
 
-\begin{table}[ht]
+\begin{table}[h!]
 \centering
 \small
 \begin{tabular}{@{}r rr rr r@{}}

@@ -10,6 +10,13 @@ _build/
 *.cma
 *.cmx
 *.o
+*.aux
+*.bbl
+*.fdb_latexmk
+*.fls
+*.out
+*.blg
+*.log
 
 
 .DS_Store
